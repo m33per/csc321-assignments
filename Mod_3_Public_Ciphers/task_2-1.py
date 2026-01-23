@@ -19,7 +19,7 @@ g = int.from_bytes(bytes.fromhex('''A4D1CBD5 C3FD3412 6765A442 EFB99905 F8104DD2
                 D662A4D1 8E73AFA3 2D779D59 18D08BC8 858F4DCE F97C2A24
                 855E6EEB 22B3B2E5'''))
 
-print("\nDiffie-Hellman Protocol (IETF 1024-bit parameters)")
+print("\nMITM Key Fixing Attack (IETF 1024-bit parameters)")
 print("----------------------------------------------")
 
 # Alice's info
@@ -30,24 +30,37 @@ ya = pow(g, xa, q)
 xb = random.randint(1, q - 1)
 yb = pow(g, xb, q)
 
+# Mallory's attack
+ya_modified = q
+yb_modified = q
+
 # compute secrets
-sa = pow(yb, xa, q)
-sb = pow(ya, xb, q)
+sa = pow(yb_modified, xa, q)
+sb = pow(ya_modified, xb, q)
+sm = pow(q, random.randint(1, q - 1), q)
 
 # compute key
 ka = bytes(bytearray((hashlib.sha256((sa).to_bytes(math.ceil(sa.bit_length() / 8)))).digest())[:16])
 kb = bytes(bytearray((hashlib.sha256((sb).to_bytes(math.ceil(sb.bit_length() / 8)))).digest())[:16])
+km = bytes(bytearray((hashlib.sha256((sm).to_bytes(math.ceil(sm.bit_length() / 8)))).digest())[:16])
 
 # print info
 print(f"Alice's private key (XA): {xa}")
 print(f"\nAlice's public key (YA): {ya}")
 print(f"\nBob's private key (XB): {xb}")
 print(f"\nBob's public key (YB): {yb}")
+print("\nMallory intercepts and modfies the public keys:")
+print(f"\nModified YA (sent to Bob): {ya_modified}")
+print(f"\nModified YB (sent to Alice): {yb_modified}")
+
 print(f"\nAlices's computed shared secret: {sa}")
-print(f"\nBob's computed shared secret: {sb}")
-print(f"\nAlice's derived key: {ka.hex()}")
-print(f"\nBob's derived key: {kb.hex()}")
-print(f"\nAlice and Bob have the same key: {ka == kb}")
+print(f"Bob's computed shared secret: {sb}")
+print(f"Alice's derived key: {ka.hex()}")
+print(f"Bob's derived key: {kb.hex()}")
+
+print(f"\nMallory's derived key: {km.hex()}")
+print(f"Mallory determines the shared secret (s): {sm}")
+print(f"All parties have the same key: {ka == kb and kb == km}")
 
 # padding function
 def pad(message):
@@ -61,21 +74,29 @@ iv_alice = os.urandom(16)
 cipher = AES.new(ka, AES.MODE_CBC, iv_alice)
 c0 = cipher.encrypt(pad(ma))
 
+# Mallory intercepts message
+cipher = AES.new(km, AES.MODE_CBC, iv_alice)
+ma_int = cipher.decrypt(c0)
+
 # Bob decrypts message
 cipher = AES.new(kb, AES.MODE_CBC, iv_alice)
 mb = cipher.decrypt(c0)
 
 # print results
-print(f"\n\nAlice's message: {ma.decode()}")
+print(f"\nAlice's message: {ma.decode()}")
 print(f"Alice's IV: {iv_alice.hex()}")
 print(f"Alice's ciphertext: {c0.hex()}")
-print(f"Bob's decrypted message: {mb.decode()}")
+print(f"Mallory's decrypts c0: {ma_int.decode()}")
 
 # Bob encrypts and sends message
 mb = b"Hi Alice!"
 iv_bob = os.urandom(16)
 cipher = AES.new(kb, AES.MODE_CBC, iv_bob)
 c1 = cipher.encrypt(pad(mb))
+
+# Mallory intercepts message
+cipher = AES.new(km, AES.MODE_CBC, iv_bob)
+mb_int = cipher.decrypt(c1)
 
 # Alice decrypts message
 cipher = AES.new(ka, AES.MODE_CBC, iv_bob)
@@ -85,4 +106,4 @@ ma = cipher.decrypt(c1)
 print(f"\nBob's message: {mb.decode()}")
 print(f"Bob's IV: {iv_bob.hex()}")
 print(f"Bob's ciphertext: {c1.hex()}")
-print(f"Alice's decrypted message: {ma.decode()}")
+print(f"Mallory decrypts c1: {ma_int.decode()}")
