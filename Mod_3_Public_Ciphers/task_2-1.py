@@ -86,7 +86,7 @@ mb = cipher.decrypt(c0)
 print(f"\nAlice's message: {ma.decode()}")
 print(f"Alice's IV: {iv_alice.hex()}")
 print(f"Alice's ciphertext: {c0.hex()}")
-print(f"Mallory's decrypts c0: {ma_int.decode()}")
+print(f"Mallory decrypts c0: {ma_int.decode()}")
 
 # Bob encrypts and sends message
 mb = b"Hi Alice!"
@@ -106,4 +106,4 @@ ma = cipher.decrypt(c1)
 print(f"\nBob's message: {mb.decode()}")
 print(f"Bob's IV: {iv_bob.hex()}")
 print(f"Bob's ciphertext: {c1.hex()}")
-print(f"Mallory decrypts c1: {ma_int.decode()}")
+print(f"Mallory decrypts c1: {mb_int.decode()}")
